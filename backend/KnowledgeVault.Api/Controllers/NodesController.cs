@@ -142,4 +142,14 @@ public class NodesController : ControllerBase
         if (!success) return BadRequest("Cannot move node into its own subtree");
         return Ok();
     }
+
+    /// <summary>
+    /// Wipe all nodes, images, and OCR entries to start fresh with a clean database
+    /// </summary>
+    [HttpDelete("all")]
+    public async Task<ActionResult> ClearAllNodes()
+    {
+        await _nodeService.ClearAllNodesAsync();
+        return NoContent();
+    }
 }

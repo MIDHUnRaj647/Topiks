@@ -201,6 +201,14 @@ public class NodeService
         return true;
     }
 
+    public async Task<bool> ClearAllNodesAsync()
+    {
+        await _db.Database.ExecuteSqlRawAsync("DELETE FROM NodeImages;");
+        await _db.Database.ExecuteSqlRawAsync("DELETE FROM NodeOcrImports;");
+        await _db.Database.ExecuteSqlRawAsync("DELETE FROM Nodes;");
+        return true;
+    }
+
     // ── Private Helpers ──────────────────────────────────────
 
     private async Task DeleteChildrenRecursive(Guid parentId)

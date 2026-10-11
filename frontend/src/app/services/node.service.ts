@@ -108,6 +108,10 @@ export class NodeService {
     return this.http.delete<void>(`${this.apiUrl}/nodes/${id}`);
   }
 
+  clearAllNodes(): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/nodes/all`);
+  }
+
   reorderNodes(items: ReorderItem[]): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/nodes/reorder`, { items });
   }

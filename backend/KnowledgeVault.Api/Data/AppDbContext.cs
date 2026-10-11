@@ -54,8 +54,12 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Seed data with sample knowledge base
-        SeedData(modelBuilder);
+        // Seed data with sample knowledge base (can be skipped by setting DISABLE_SEED_DATA=true)
+        var disableSeed = Environment.GetEnvironmentVariable("DISABLE_SEED_DATA") == "true";
+        if (!disableSeed)
+        {
+            SeedData(modelBuilder);
+        }
     }
 
     private static void SeedData(ModelBuilder modelBuilder)
