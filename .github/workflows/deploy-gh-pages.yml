@@ -38,7 +38,7 @@ jobs:
       - name: Build Angular for GitHub Pages
         working-directory: frontend
         run: |
-          npm run build -- --configuration=production --base-href /${{ github.event.repository.name }}/
+          npm run build -- --configuration=production --base-href /Topiks/
           cp dist/frontend/index.html dist/frontend/404.html
 
       - name: Setup Pages
