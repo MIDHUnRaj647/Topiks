@@ -197,12 +197,19 @@ button {
   animation: fadeIn 0.25s ease-out forwards;
 }
 
-/* CKEditor Custom Styling for Dark and Mobile */
+/* CKEditor Custom Styling & Stacking Fix */
 .ck.ck-editor {
   width: 100% !important;
   display: flex !important;
   flex-direction: column !important;
   flex: 1 1 auto !important;
+  position: relative !important;
+}
+
+.ck.ck-editor__top {
+  position: relative !important;
+  z-index: 50 !important;
+  overflow: visible !important;
 }
 
 .ck.ck-toolbar {
@@ -210,12 +217,19 @@ button {
   border: 1px solid var(--border-color) !important;
   border-radius: var(--radius-md) var(--radius-md) 0 0 !important;
   padding: 6px !important;
-  overflow-x: auto !important;
+  overflow: visible !important;
   flex-wrap: wrap !important;
+  position: relative !important;
+  z-index: 50 !important;
 }
 
 .ck.ck-toolbar .ck-toolbar__items {
   flex-wrap: wrap !important;
+}
+
+.ck.ck-editor__main {
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 .ck.ck-content {
@@ -228,10 +242,57 @@ button {
   padding: 16px 20px !important;
   font-size: 15px !important;
   line-height: 1.7 !important;
+  position: relative !important;
+  z-index: 1 !important;
 }
 
 .ck.ck-content:focus {
   border-color: var(--border-color-focus) !important;
+}
+
+/* CKEditor Dropdown Panels & Menus (Heading, Paragraph, Table, Lists) */
+.ck.ck-dropdown .ck-dropdown__panel {
+  position: absolute !important;
+  z-index: 9999 !important;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--border-color) !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28) !important;
+  max-height: 350px !important;
+  overflow-y: auto !important;
+}
+
+body.theme-dark .ck.ck-dropdown .ck-dropdown__panel {
+  background: #23342b !important;
+}
+
+.ck.ck-list {
+  background: transparent !important;
+  padding: 4px !important;
+}
+
+.ck.ck-list__item {
+  min-width: 170px !important;
+}
+
+.ck.ck-list__item .ck-button {
+  border-radius: var(--radius-xs) !important;
+  padding: 8px 14px !important;
+  color: var(--text-primary) !important;
+  width: 100% !important;
+  font-size: 0.92rem !important;
+  background: transparent !important;
+
+  &:hover {
+    background: var(--bg-card-hover) !important;
+    color: var(--primary) !important;
+  }
+
+  &.ck-on {
+    background: var(--primary-glow) !important;
+    color: var(--primary) !important;
+    font-weight: 700 !important;
+  }
 }
 
 .ck.ck-button {
@@ -247,6 +308,19 @@ button {
 .ck.ck-button.ck-on {
   background: var(--primary-glow) !important;
   color: var(--primary) !important;
+}
+
+/* CKEditor Balloon Panels (Links, Tables, Floats) */
+.ck.ck-balloon-panel {
+  z-index: 99999 !important;
+  background: #ffffff !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28) !important;
+}
+
+body.theme-dark .ck.ck-balloon-panel {
+  background: #23342b !important;
 }
 
 /* Content typography inside preview and editor */
