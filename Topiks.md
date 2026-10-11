@@ -1,0 +1,903 @@
+# Knowledge Vault
+## Dynamic Hierarchical Knowledge Management System
+
+---
+
+# 1. Project Overview
+
+Knowledge Vault is a lightweight, self-hosted knowledge management application designed for storing, organizing, searching, and managing information in a hierarchical structure.
+
+Unlike traditional systems that use separate tables for Books, Chapters, and Topics, Knowledge Vault uses a **generic self-referencing node architecture**.
+
+This allows unlimited hierarchy levels without future database redesign.
+
+Examples:
+
+```text
+Book
+ └── Chapter
+      └── Topic
+```
+
+or
+
+```text
+Book
+ └── Chapter
+      └── Topic
+           └── Notes
+                └── References
+```
+
+or
+
+```text
+Programming
+ ├── Angular
+ │    ├── Services
+ │    ├── Components
+ │    └── Routing
+ │
+ └── .NET
+      ├── API
+      ├── Dependency Injection
+      └── Entity Framework
+```
+
+---
+
+# 2. Primary Goals
+
+- Simple and intuitive UI
+- Dynamic hierarchy
+- Rich text editing
+- OCR Image-to-Text conversion
+- Full-text search
+- Lightweight database
+- Easy deployment
+- Minimal infrastructure maintenance
+
+---
+
+# 3. Recommended Technology Stack
+
+## Frontend
+
+### Angular 19+
+
+Reasons:
+
+- Familiar technology
+- Strong component architecture
+- Angular Material support
+- Great TypeScript ecosystem
+- Easy GitHub Pages deployment
+
+### UI Libraries
+
+```text
+Angular Material
+Angular CDK
+Angular CDK Tree
+Angular CDK Drag & Drop
+```
+
+### Rich Text Editor
+
+```text
+CKEditor 5
+```
+
+Reason:
+
+- Most user-friendly
+- Bullet points
+- Numbering
+- Tables
+- Headings
+- Hyperlinks
+- Images
+- No markdown knowledge required
+
+---
+
+## Backend
+
+### ASP.NET Core 9 Web API
+
+Responsibilities:
+
+- CRUD operations
+- File uploads
+- OCR processing
+- Search
+- Validation
+- Future authentication
+
+---
+
+## ORM
+
+### Entity Framework Core
+
+```text
+EF Core + SQLite Provider
+```
+
+---
+
+## Database
+
+### SQLite
+
+Reasons:
+
+- Single-file database
+- Lightweight
+- Easy backup
+- No SQL Server required
+- No MySQL administration
+- Perfect for personal or small team applications
+
+---
+
+## OCR Engine
+
+### Tesseract OCR
+
+Benefits:
+
+- Open source
+- No API costs
+- Offline processing
+- Supports multiple languages
+
+---
+
+## Hosting
+
+### Frontend
+
+```text
+GitHub Pages
+```
+
+### Backend
+
+Choose one:
+
+```text
+Render
+Railway
+Azure App Service
+```
+
+---
+
+# 4. High-Level Architecture
+
+```text
+Angular Application
+        │
+        ▼
+ASP.NET Core API
+        │
+        ▼
+Entity Framework Core
+        │
+        ▼
+SQLite Database
+        │
+        ├── Node Storage
+        ├── OCR History
+        └── Image References
+```
+
+---
+
+# 5. Core Architecture
+
+## Generic Node Model
+
+Instead of:
+
+```text
+Books Table
+Chapters Table
+Topics Table
+```
+
+Use:
+
+```text
+Nodes Table
+```
+
+Everything becomes a node.
+
+Examples:
+
+```text
+Book
+Chapter
+Topic
+Note
+Reference
+Attachment
+```
+
+All use the same table.
+
+---
+
+# 6. Database Design
+
+## Nodes
+
+```sql
+CREATE TABLE Nodes
+(
+    Id TEXT PRIMARY KEY,
+
+    ParentId TEXT NULL,
+
+    Name TEXT NOT NULL,
+
+    NodeType INTEGER NOT NULL,
+
+    Priority INTEGER NULL,
+
+    SortOrder INTEGER NOT NULL DEFAULT 0,
+
+    Content TEXT NULL,
+
+    CreatedOn DATETIME NOT NULL,
+
+    UpdatedOn DATETIME NOT NULL,
+
+    FOREIGN KEY(ParentId)
+    REFERENCES Nodes(Id)
+);
+```
+
+---
+
+## Node Images
+
+```sql
+CREATE TABLE NodeImages
+(
+    Id TEXT PRIMARY KEY,
+
+    NodeId TEXT NOT NULL,
+
+    FileName TEXT NOT NULL,
+
+    FilePath TEXT NOT NULL,
+
+    UploadedOn DATETIME NOT NULL,
+
+    FOREIGN KEY(NodeId)
+    REFERENCES Nodes(Id)
+);
+```
+
+---
+
+## OCR Import History
+
+```sql
+CREATE TABLE NodeOcrImports
+(
+    Id TEXT PRIMARY KEY,
+
+    NodeId TEXT NOT NULL,
+
+    ImageFileName TEXT NOT NULL,
+
+    ExtractedText TEXT NOT NULL,
+
+    ImportedOn DATETIME NOT NULL,
+
+    FOREIGN KEY(NodeId)
+    REFERENCES Nodes(Id)
+);
+```
+
+---
+
+# 7. Entity Models
+
+## NodeType
+
+```csharp
+public enum NodeType
+{
+    Book = 1,
+    Chapter = 2,
+    Topic = 3,
+    Note = 4,
+    Reference = 5
+}
+```
+
+---
+
+## Priority
+
+```csharp
+public enum Priority
+{
+    Low = 1,
+    Medium = 2,
+    High = 3
+}
+```
+
+---
+
+## Node Entity
+
+```csharp
+public class Node
+{
+    public Guid Id { get; set; }
+
+    public Guid? ParentId { get; set; }
+
+    public Node? Parent { get; set; }
+
+    public ICollection<Node> Children { get; set; }
+        = new List<Node>();
+
+    public string Name { get; set; } = string.Empty;
+
+    public NodeType NodeType { get; set; }
+
+    public Priority? Priority { get; set; }
+
+    public string? Content { get; set; }
+
+    public int SortOrder { get; set; }
+
+    public DateTime CreatedOn { get; set; }
+
+    public DateTime UpdatedOn { get; set; }
+}
+```
+
+---
+
+# 8. Content Storage Strategy
+
+## DO NOT STORE MARKDOWN
+
+Reason:
+
+End users are non-technical.
+
+---
+
+## Store HTML Generated By CKEditor
+
+Example:
+
+```html
+<h2>Angular Dependency Injection</h2>
+
+<p>Dependency Injection is a design pattern...</p>
+
+<ul>
+  <li>Singleton Services</li>
+  <li>Scoped Services</li>
+  <li>Transient Services</li>
+</ul>
+```
+
+Benefits:
+
+- User-friendly
+- Rich formatting
+- Easy rendering
+- Easy export
+
+Users never see HTML.
+
+---
+
+# 9. User Interface Design
+
+## Layout
+
+```text
+-------------------------------------------------
+| Tree View       | Content Editor              |
+|                 |                             |
+| Angular         | Topic Name                  |
+|   Services      |                             |
+|     DI          | Rich Text Editor            |
+|     HTTP        |                             |
+|                 |                             |
+| .NET            | OCR Upload Button           |
+|                 | Save Button                 |
+-------------------------------------------------
+```
+
+---
+
+# 10. Application Screens
+
+## Landing Page
+
+Displays root nodes.
+
+```text
+Books
+
++ Add Book
+
+Angular
+.NET
+SQL
+```
+
+---
+
+## Tree Navigation
+
+```text
+Angular
+ ├── Services
+ │     ├── Dependency Injection
+ │     └── Http Client
+ │
+ └── Components
+```
+
+---
+
+## Editor View
+
+```text
+Topic Name
+
+[ Upload Image ]
+
+---------------------------------
+
+Rich Text Content
+
+---------------------------------
+
+[ Save ]
+```
+
+---
+
+# 11. OCR Feature
+
+## Objective
+
+Convert screenshots, photos, or scanned documents into editable text.
+
+---
+
+## OCR Workflow
+
+```text
+Select Image
+      ↓
+Upload Image
+      ↓
+Backend OCR Processing
+      ↓
+Text Extraction
+      ↓
+Append To Existing Content
+      ↓
+Display In Editor
+      ↓
+User Reviews
+      ↓
+Save
+```
+
+---
+
+# 12. Multiple OCR Upload Support
+
+This is a mandatory feature.
+
+Users should be able to upload multiple images for a single topic.
+
+Example:
+
+### Current Content
+
+```text
+Angular Services
+```
+
+---
+
+### OCR Upload 1
+
+Extracted Text
+
+```text
+Dependency Injection Concepts
+```
+
+Result
+
+```text
+Angular Services
+
+Dependency Injection Concepts
+```
+
+---
+
+### OCR Upload 2
+
+Extracted Text
+
+```text
+Provider Lifecycle
+```
+
+Result
+
+```text
+Angular Services
+
+Dependency Injection Concepts
+
+Provider Lifecycle
+```
+
+---
+
+### Behavior
+
+✅ Append content
+
+✅ Preserve previous content
+
+✅ Allow editing before save
+
+✅ Maintain OCR import history
+
+❌ Never overwrite content
+
+---
+
+# 13. Search Feature
+
+Search across:
+
+```text
+Node Name
+Node Content
+OCR Imported Content
+```
+
+Example:
+
+```text
+Search: Angular
+```
+
+Results:
+
+```text
+Angular > Services > Dependency Injection
+
+.NET > API > Angular Integration
+```
+
+---
+
+# 14. API Design
+
+## Nodes
+
+### Get Root Nodes
+
+```http
+GET /api/nodes/root
+```
+
+---
+
+### Get Children
+
+```http
+GET /api/nodes/{id}/children
+```
+
+---
+
+### Get Node
+
+```http
+GET /api/nodes/{id}
+```
+
+---
+
+### Create Node
+
+```http
+POST /api/nodes
+```
+
+Request
+
+```json
+{
+  "parentId": "guid",
+  "name": "Dependency Injection",
+  "nodeType": 3
+}
+```
+
+---
+
+### Update Node
+
+```http
+PUT /api/nodes/{id}
+```
+
+---
+
+### Delete Node
+
+```http
+DELETE /api/nodes/{id}
+```
+
+---
+
+# 15. OCR APIs
+
+## Upload And Extract
+
+```http
+POST /api/nodes/{id}/ocr
+```
+
+Request
+
+```text
+multipart/form-data
+```
+
+Response
+
+```json
+{
+  "text": "Extracted OCR Content"
+}
+```
+
+---
+
+# 16. File Storage Design
+
+Directory Structure
+
+```text
+/storage
+
+    /images
+
+    /ocr
+
+    /exports
+
+    /thumbnails
+```
+
+---
+
+# 17. Drag And Drop Reordering
+
+Users should reorder:
+
+```text
+Books
+Chapters
+Topics
+```
+
+using drag and drop.
+
+Use:
+
+```text
+Angular CDK DragDrop
+```
+
+Persist order in:
+
+```sql
+SortOrder
+```
+
+column.
+
+---
+
+# 18. Future Enhancements
+
+## Tags
+
+```text
+#Angular
+#CSharp
+#SQL
+#Azure
+#Architecture
+```
+
+---
+
+## Favorites
+
+Bookmark nodes.
+
+---
+
+## Full Text Search
+
+SQLite FTS5.
+
+---
+
+## Dark Mode
+
+Angular Material Themes.
+
+---
+
+## PDF Export
+
+Export node content.
+
+---
+
+## DOCX Export
+
+Microsoft Word export support.
+
+---
+
+## AI Features
+
+Future integrations:
+
+```text
+Summarize Topic
+Generate Notes
+Generate Quiz
+Improve OCR Output
+```
+
+---
+
+# 19. Development Phases
+
+## Phase 1
+
+Core Features
+
+- Node hierarchy
+- Tree view
+- CRUD
+- SQLite
+- CKEditor
+
+---
+
+## Phase 2
+
+OCR
+
+- Upload image
+- Tesseract integration
+- Append extracted text
+
+---
+
+## Phase 3
+
+Search
+
+- Global search
+- Filters
+
+---
+
+## Phase 4
+
+Advanced Features
+
+- Tags
+- Export
+- Favorites
+
+---
+
+# 20. Final Stack
+
+```text
+Frontend
+---------
+Angular 19
+Angular Material
+Angular CDK Tree
+Angular CDK DragDrop
+CKEditor 5
+
+Backend
+---------
+ASP.NET Core 9 Web API
+
+Database
+---------
+SQLite
+
+ORM
+---------
+Entity Framework Core
+
+OCR
+---------
+Tesseract OCR
+
+Storage
+---------
+Local File Storage
+
+Hosting
+---------
+Frontend:
+GitHub Pages
+
+Backend:
+Render / Railway / Azure
+
+Architecture
+---------
+Self-Referencing Node Model
+```
+
+---
+
+# Final Recommendation
+
+Build the application around a generic self-referencing Node hierarchy from day one.
+
+Do not create separate Book, Chapter, and Topic tables.
+
+Use:
+
+```text
+Node
+ └── Node
+      └── Node
+           └── Node
+```
+
+with metadata:
+
+```text
+NodeType
+Priority
+Content
+SortOrder
+```
+
+This design provides maximum flexibility, minimal future database changes, excellent scalability, and a much cleaner architecture for long-term maintenance.

@@ -1,0 +1,853 @@
+<div class="app-viewport">
+
+  <!-- =========================================================================
+       1. TOP APPLICATION BAR
+       ========================================================================= -->
+  <header class="app-header glass-panel">
+    <div class="header-left">
+      <!-- Brand Logo -->
+      <div class="app-brand" (click)="navigateToCrumb(null)">
+        <div class="brand-icon">
+          <i class="fa-solid fa-layer-group"></i>
+        </div>
+        <div class="brand-info">
+          <span class="brand-name">Topiks</span>
+          <span class="brand-tagline">Knowledge Vault</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Actions (Large, Comfortable Touch Targets) -->
+    <div class="header-right">
+      <!-- Search Button -->
+      <button class="header-touch-btn search-btn" (click)="isSearchModalOpen = true" aria-label="Search Vault">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <span class="btn-label-desktop">Search Vault</span>
+      </button>
+
+      <!-- Theme Switcher -->
+      <button class="header-touch-btn" (click)="toggleTheme()" [title]="isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'">
+        <i [class]="isDarkMode ? 'fa-solid fa-sun' : 'fa-solid fa-moon'"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- =========================================================================
+       2. MAIN CONTENT AREA (NO SIDE NAVBAR)
+       ========================================================================= -->
+  <main class="app-main-content">
+
+    <!-- =======================================================================
+         VIEW A: MAIN DASHBOARD & HIERARCHY EXPLORER
+         ======================================================================= -->
+    <section class="dashboard-view" *ngIf="activeView === 'dashboard'">
+      <div class="dashboard-container">
+
+        <!-- Top Breadcrumbs Navigation Bar -->
+        <div class="dashboard-nav-banner glass-panel" *ngIf="currentFolder">
+          <button class="nav-back-big-btn" (click)="goUpOneFolder()">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back</span>
+          </button>
+
+          <nav class="breadcrumb-trail-scroll">
+            <span class="crumb-chip" (click)="navigateToCrumb(null)">
+              <i class="fa-solid fa-house"></i> Home
+            </span>
+            <span *ngFor="let crumb of breadcrumbs; let last = last" class="crumb-wrapper">
+              <i class="fa-solid fa-chevron-right crumb-arrow"></i>
+              <span class="crumb-chip" [class.active]="last" (click)="navigateToCrumb(crumb.id)">
+                {{ getNodeTypeIcon(crumb.nodeType) }} {{ crumb.name }}
+              </span>
+            </span>
+          </nav>
+        </div>
+
+        <!-- Dashboard Hero Header -->
+        <div class="dashboard-hero">
+          <div class="hero-text-block">
+            <div class="hero-type-chip" *ngIf="currentFolder">
+              {{ getNodeTypeIcon(currentFolder.nodeType) }} {{ currentFolder.nodeType }}
+            </div>
+            <h1 class="hero-title">
+              {{ currentFolder ? currentFolder.name : 'All Knowledge Books' }}
+            </h1>
+            <p class="hero-subtitle">
+              <span *ngIf="!currentFolder">Browse all your knowledge books. Select a book to view its kaalams.</span>
+              <span *ngIf="currentFolder && currentFolder.nodeType === 'Book'">All Kaalams inside {{ currentFolder.name }}</span>
+              <span *ngIf="currentFolder && currentFolder.nodeType === 'Kaalam'">All Chapters inside {{ currentFolder.name }}</span>
+              <span *ngIf="currentFolder && currentFolder.nodeType === 'Chapter'">All Topics inside {{ currentFolder.name }}</span>
+              <span *ngIf="currentFolder && currentFolder.nodeType !== 'Book' && currentFolder.nodeType !== 'Kaalam' && currentFolder.nodeType !== 'Chapter'">Items inside {{ currentFolder.name }}</span>
+            </p>
+          </div>
+
+          <!-- Hero Action Buttons (Big & Touch-Friendly) -->
+          <div class="hero-actions-row">
+            <button class="big-action-btn primary-gradient-btn" (click)="openCreateModal(currentFolder || undefined)">
+              <i class="fa-solid fa-plus"></i>
+              <span>{{ currentFolder ? 'Add ' + getChildNodeType(currentFolder.nodeType) : 'New Book' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- In-Dashboard Search & Filter Bar (Compact & Sleek) -->
+        <div class="dashboard-filter-bar compact glass-panel">
+          <div class="filter-search-box compact">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input 
+              type="text" 
+              placeholder="Filter list..." 
+              [(ngModel)]="dashboardSearchQuery" 
+              class="filter-search-input"
+            />
+            <button *ngIf="dashboardSearchQuery" (click)="dashboardSearchQuery = ''" class="clear-filter-btn">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="filter-pills-row compact">
+            <button 
+              class="filter-pill-btn compact" 
+              [class.active]="!filterFavoritesOnly" 
+              (click)="filterFavoritesOnly = false">
+              All ({{ getDisplayedNodes().length }})
+            </button>
+
+            <button 
+              class="filter-pill-btn compact" 
+              [class.active]="filterFavoritesOnly" 
+              (click)="filterFavoritesOnly = true">
+              <i class="fa-solid fa-star text-amber"></i> Starred
+            </button>
+          </div>
+        </div>
+
+        <!-- Empty State -->
+        <div *ngIf="getDisplayedNodes().length === 0" class="dashboard-empty-card glass-panel">
+          <div class="empty-icon-circle">
+            <i class="fa-regular fa-folder-open"></i>
+          </div>
+          <h3>No items found</h3>
+          <p>{{ dashboardSearchQuery ? 'No items match your search filter.' : 'Start adding content to this section.' }}</p>
+          <button class="big-action-btn primary-gradient-btn" (click)="openCreateModal(currentFolder || undefined)">
+            <i class="fa-solid fa-plus"></i>
+            <span>{{ currentFolder ? 'Add ' + getChildNodeType(currentFolder.nodeType) : 'Create Your First Book' }}</span>
+          </button>
+        </div>
+
+        <!-- Main Dashboard Navigation Cards Grid -->
+        <div class="dashboard-cards-grid" *ngIf="getDisplayedNodes().length > 0">
+          <div 
+            *ngFor="let node of getDisplayedNodes()" 
+            class="node-card glass-panel"
+            (click)="isContainerNode(node) ? enterFolder(node) : openNodeInEditor(node)">
+
+            <!-- Card Top: Icon & Badges -->
+            <div class="node-card-header">
+              <div class="node-avatar-badge">
+                <span class="avatar-icon">{{ getNodeTypeIcon(node.nodeType) }}</span>
+              </div>
+
+              <div class="node-meta-pills">
+                <!-- Priority Pill -->
+                <span 
+                  *ngIf="node.priority" 
+                  class="card-priority-pill"
+                  [style.borderColor]="getPriorityColor(node.priority)"
+                  [style.color]="getPriorityColor(node.priority)">
+                  ● {{ node.priority }}
+                </span>
+
+                <!-- Favorite Star Toggle -->
+                <button 
+                  class="card-touch-star-btn" 
+                  [class.is-fav]="node.isFavorite"
+                  (click)="toggleFavorite(node); $event.stopPropagation()"
+                  title="Toggle Favorite">
+                  <i [class]="node.isFavorite ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+                </button>
+              </div>
+            </div>
+
+            <!-- Card Body: Title & Info -->
+            <div class="node-card-body">
+              <h3 class="node-card-title">{{ node.name }}</h3>
+              <p class="node-card-subtitle">
+                <span *ngIf="isContainerNode(node)">
+                  {{ node.nodeType === 'Book' ? '🏛️' : (node.nodeType === 'Kaalam' ? '📖' : '📝') }} {{ getChildTypeLabelForNode(node) }}
+                </span>
+                <span *ngIf="!isContainerNode(node)">
+                  📄 {{ node.nodeType }}
+                </span>
+              </p>
+            </div>
+
+            <!-- Card Bottom: Large Touch Action Buttons -->
+            <div class="node-card-actions" (click)="$event.stopPropagation()">
+              <!-- For Book, Kaalam, Chapter: Only Browse folder button (no editing features) -->
+              <button 
+                class="card-touch-btn card-open-btn full-width"
+                (click)="enterFolder(node)"
+                *ngIf="isContainerNode(node)">
+                <span>Browse</span>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+
+              <!-- For Topics: Open Notes viewer & editor -->
+              <button 
+                class="card-touch-btn card-edit-btn full-width"
+                *ngIf="!isContainerNode(node)"
+                (click)="openNodeInEditor(node)">
+                <i class="fa-solid fa-file-lines"></i>
+                <span>Open Notes</span>
+                <i class="fa-solid fa-chevron-right"></i>
+              </button>
+
+              <!-- Move Up & Down (Comfortable Touch Targets) -->
+              <button class="card-touch-icon-btn" (click)="moveSibling(node, 'up', $event)" title="Move Up">
+                <i class="fa-solid fa-arrow-up"></i>
+              </button>
+              <button class="card-touch-icon-btn" (click)="moveSibling(node, 'down', $event)" title="Move Down">
+                <i class="fa-solid fa-arrow-down"></i>
+              </button>
+
+              <!-- Rename -->
+              <button class="card-touch-icon-btn" (click)="openRenameModal(node, $event)" title="Rename">
+                <i class="fa-solid fa-pencil"></i>
+              </button>
+
+              <!-- Delete -->
+              <button class="card-touch-icon-btn danger-hover" (click)="deleteNode(node, $event)" title="Delete">
+                <i class="fa-solid fa-trash-can"></i>
+              </button>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- =======================================================================
+         VIEW B: FULL-SCREEN RICH EDITOR & READER VIEW
+         ======================================================================= -->
+    <section class="editor-view" *ngIf="activeView === 'editor' && selectedNode">
+      <div class="editor-view-container">
+
+        <!-- Top Navigation Bar for Editor -->
+        <div class="editor-nav-bar glass-panel">
+          <button class="nav-back-big-btn" (click)="backToDashboard()">
+            <i class="fa-solid fa-arrow-left"></i>
+            <span>Back to Dashboard</span>
+          </button>
+
+          <nav class="breadcrumb-trail-scroll">
+            <span class="crumb-chip" (click)="navigateToCrumb(null)">Home</span>
+            <span *ngFor="let crumb of breadcrumbs; let last = last" class="crumb-wrapper">
+              <i class="fa-solid fa-chevron-right crumb-arrow"></i>
+              <span class="crumb-chip" [class.active]="last" (click)="crumb.id !== selectedNode.id ? selectNodeById(crumb.id) : null">
+                {{ crumb.name }}
+              </span>
+            </span>
+          </nav>
+        </div>
+
+        <!-- =====================================================================
+             TOPIC HEADER & CONTROLS (VIEW MODE BY DEFAULT)
+             ===================================================================== -->
+        <div class="topic-header-card glass-panel">
+          
+          <!-- VIEW MODE: Clean Document Title Display -->
+          <div *ngIf="editorViewMode === 'preview'" class="topic-view-title-banner">
+            <div class="topic-type-tag">
+              {{ getNodeTypeIcon(selectedNode.nodeType) }} {{ selectedNode.nodeType }}
+            </div>
+            <h1 class="topic-display-title">{{ selectedNode.name }}</h1>
+          </div>
+
+          <!-- EDIT MODE: Editable Title Input -->
+          <div *ngIf="editorViewMode === 'edit'" class="topic-title-row">
+            <span class="topic-type-tag">
+              {{ getNodeTypeIcon(selectedNode.nodeType) }} {{ selectedNode.nodeType }}
+            </span>
+            <input 
+              type="text" 
+              class="topic-title-big-input" 
+              [(ngModel)]="selectedNode.name" 
+              placeholder="Topic Title..."
+            />
+          </div>
+
+          <!-- Metadata Controls: Priority, Star, Quick Status -->
+          <div class="topic-meta-controls">
+            <!-- Priority Selector (Pills in Edit, Badge in View) -->
+            <div class="priority-touch-group" *ngIf="editorViewMode === 'edit'">
+              <span class="group-label">Priority:</span>
+              <button 
+                type="button" 
+                class="priority-touch-pill" 
+                [class.selected]="selectedNode.priority === null" 
+                (click)="setPriority(null)">
+                Normal
+              </button>
+              <button 
+                type="button" 
+                class="priority-touch-pill low" 
+                [class.selected]="selectedNode.priority === Priority.Low" 
+                (click)="setPriority(Priority.Low)">
+                Low
+              </button>
+              <button 
+                type="button" 
+                class="priority-touch-pill med" 
+                [class.selected]="selectedNode.priority === Priority.Medium" 
+                (click)="setPriority(Priority.Medium)">
+                Medium
+              </button>
+              <button 
+                type="button" 
+                class="priority-touch-pill high" 
+                [class.selected]="selectedNode.priority === Priority.High" 
+                (click)="setPriority(Priority.High)">
+                High
+              </button>
+            </div>
+
+            <!-- View Mode Priority Badge -->
+            <div class="view-priority-badge" *ngIf="editorViewMode === 'preview' && selectedNode.priority"
+                 [style.borderColor]="getPriorityColor(selectedNode.priority)"
+                 [style.color]="getPriorityColor(selectedNode.priority)">
+              ● {{ selectedNode.priority }} Priority
+            </div>
+
+            <!-- Favorite Star Button -->
+            <button 
+              class="topic-touch-fav-btn" 
+              [class.is-fav]="selectedNode.isFavorite"
+              (click)="toggleFavorite()"
+              title="Toggle Favorite">
+              <i [class]="selectedNode.isFavorite ? 'fa-solid fa-star' : 'fa-regular fa-star'"></i>
+              <span>{{ selectedNode.isFavorite ? 'Starred' : 'Star' }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- =====================================================================
+             MAJOR ACTION TOOLBAR
+             ===================================================================== -->
+        <div class="editor-action-toolbar glass-panel">
+          <div class="toolbar-left">
+            <!-- VIEW MODE: Prominent + Edit / Add Button -->
+            <button 
+              *ngIf="editorViewMode === 'preview'" 
+              class="big-action-btn primary-gradient-btn" 
+              (click)="enterEditMode()">
+              <i class="fa-solid fa-plus"></i>
+              <span>Edit / Add Notes</span>
+            </button>
+
+            <!-- EDIT MODE: Save & Cancel Buttons -->
+            <button 
+              *ngIf="editorViewMode === 'edit'" 
+              class="big-save-button" 
+              [class.saving]="isSaving" 
+              [class.saved]="saveSuccessMessage" 
+              (click)="saveCurrentNode()">
+              <i *ngIf="!isSaving && !saveSuccessMessage" class="fa-solid fa-floppy-disk"></i>
+              <i *ngIf="isSaving" class="fa-solid fa-circle-notch fa-spin"></i>
+              <i *ngIf="saveSuccessMessage" class="fa-solid fa-check"></i>
+              <span>{{ saveSuccessMessage ? 'Saved!' : (isSaving ? 'Saving...' : 'Save Notes') }}</span>
+            </button>
+
+            <button 
+              *ngIf="editorViewMode === 'edit'" 
+              class="toolbar-touch-btn" 
+              (click)="exitEditMode()">
+              <i class="fa-solid fa-eye"></i>
+              <span>View Mode</span>
+            </button>
+          </div>
+
+          <div class="toolbar-right">
+            <!-- Toggle Images & Gallery Button -->
+            <button 
+              class="toolbar-touch-btn image-toggle-btn" 
+              [class.active]="isImagesPanelOpen" 
+              (click)="toggleImagesPanel()"
+              title="Upload and Manage Topic Images">
+              <i class="fa-solid fa-images"></i>
+              <span>Images</span>
+              <span *ngIf="nodeImages.length > 0" class="ocr-count-bubble">{{ nodeImages.length }}</span>
+            </button>
+
+            <!-- Toggle OCR / Attachments Button (ONLY shows section when clicked) -->
+            <button 
+              class="toolbar-touch-btn ocr-toggle-btn" 
+              [class.active]="isAttachmentOpen" 
+              (click)="toggleAttachments()"
+              title="Toggle OCR and Image Attachment Scanner">
+              <i class="fa-solid fa-camera"></i>
+              <span>OCR Scanner</span>
+              <span *ngIf="ocrHistory.length > 0" class="ocr-count-bubble">{{ ocrHistory.length }}</span>
+            </button>
+
+            <!-- Export Button -->
+            <button class="toolbar-touch-btn" (click)="exportDocument('html')" title="Export as HTML Document">
+              <i class="fa-solid fa-file-arrow-down"></i>
+              <span class="btn-text">Export</span>
+            </button>
+
+            <!-- Delete Button -->
+            <button class="toolbar-touch-btn danger-btn" (click)="deleteNode(selectedNode)" title="Delete this Topic">
+              <i class="fa-solid fa-trash-can"></i>
+              <span class="btn-text">Delete</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- =====================================================================
+             ATTACHED SECTION: IMAGES & PHOTO GALLERY
+             ===================================================================== -->
+        <div class="ocr-touch-card glass-panel animate-fade-in" *ngIf="isImagesPanelOpen">
+          <div class="ocr-touch-header">
+            <div class="ocr-icon-title">
+              <i class="fa-solid fa-images"></i>
+              <div>
+                <strong>Topic Images & Gallery</strong>
+                <p>Upload screenshots, diagrams, and photos to embed directly into notes</p>
+              </div>
+            </div>
+
+            <div class="ocr-header-actions">
+              <!-- Upload Image Button -->
+              <label class="ocr-big-upload-btn" [class.loading]="isUploadingImage">
+                <input type="file" accept="image/*" multiple (change)="onImageFileSelected($event)" style="display:none;" />
+                <i *ngIf="!isUploadingImage" class="fa-solid fa-cloud-arrow-up"></i>
+                <i *ngIf="isUploadingImage" class="fa-solid fa-spinner fa-spin"></i>
+                <span>{{ isUploadingImage ? 'Uploading...' : 'Upload Image' }}</span>
+              </label>
+
+              <!-- Close Button -->
+              <button class="icon-close-attach-btn" (click)="isImagesPanelOpen = false" title="Close Gallery">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Success Alert -->
+          <div *ngIf="imageSuccessBanner" class="ocr-alert-success animate-fade-in">
+            <i class="fa-solid fa-check-circle"></i> Image uploaded successfully! Click "Insert into Note" to embed it.
+          </div>
+
+          <!-- Error Alert -->
+          <div *ngIf="imageUploadError" class="ocr-alert-danger animate-fade-in">
+            <i class="fa-solid fa-triangle-exclamation"></i> {{ imageUploadError }}
+          </div>
+
+          <!-- Images Grid -->
+          <div *ngIf="nodeImages.length > 0" class="topic-images-grid">
+            <div *ngFor="let img of nodeImages" class="image-thumb-card glass-panel">
+              <div class="thumb-container" (click)="previewImage(img)" title="Click to enlarge">
+                <img [src]="img.url" [alt]="img.fileName" loading="lazy" />
+                <div class="thumb-overlay">
+                  <i class="fa-solid fa-magnifying-glass-plus"></i>
+                </div>
+              </div>
+              <div class="thumb-info">
+                <span class="thumb-name" [title]="img.fileName">{{ img.fileName }}</span>
+                <span class="thumb-size" *ngIf="img.sizeBytes">{{ (img.sizeBytes / 1024).toFixed(0) }} KB</span>
+              </div>
+              <div class="thumb-actions">
+                <button class="thumb-action-btn insert-btn" (click)="insertImageIntoNote(img)" title="Embed image in note">
+                  <i class="fa-solid fa-circle-plus"></i>
+                  <span>Insert</span>
+                </button>
+                <button class="thumb-action-btn delete-btn" (click)="deleteImage(img, $event)" title="Delete image">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="nodeImages.length === 0 && !isUploadingImage" class="empty-gallery-msg">
+            <i class="fa-regular fa-image"></i>
+            <p>No images uploaded for this topic yet. Click <strong>Upload Image</strong> above to add photos, diagrams, or screenshots!</p>
+          </div>
+        </div>
+
+        <!-- =====================================================================
+             ATTACHED SECTION (OCR IMAGE-TO-TEXT) - ONLY VISIBLE ON BUTTON CLICK
+             ===================================================================== -->
+        <div class="ocr-touch-card glass-panel animate-fade-in" *ngIf="isAttachmentOpen">
+          <div class="ocr-touch-header">
+            <div class="ocr-icon-title">
+              <i class="fa-solid fa-camera"></i>
+              <div>
+                <strong>OCR Image-to-Text Attachments</strong>
+                <p>Take photo or upload screenshot to extract editable text into notes</p>
+              </div>
+            </div>
+
+            <div class="ocr-header-actions">
+              <!-- Big Upload / Camera Button -->
+              <label class="ocr-big-upload-btn" [class.loading]="isUploadingOcr">
+                <input type="file" accept="image/*" capture="environment" (change)="onOcrFileSelected($event)" style="display:none;" />
+                <i *ngIf="!isUploadingOcr" class="fa-solid fa-camera-retro"></i>
+                <i *ngIf="isUploadingOcr" class="fa-solid fa-spinner fa-spin"></i>
+                <span>{{ isUploadingOcr ? 'Scanning text...' : 'Scan / Upload Image' }}</span>
+              </label>
+
+              <!-- Close Attached Section Button -->
+              <button class="icon-close-attach-btn" (click)="isAttachmentOpen = false" title="Close Attachments">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Scanning Progress Bar -->
+          <div *ngIf="isUploadingOcr" class="ocr-progress-container animate-fade-in">
+            <div class="ocr-progress-header">
+              <span><i class="fa-solid fa-gear fa-spin"></i> {{ ocrStatusText || 'Recognizing text...' }}</span>
+              <span>{{ ocrProgress }}%</span>
+            </div>
+            <div class="ocr-progress-track">
+              <div class="ocr-progress-fill" [style.width.%]="ocrProgress"></div>
+            </div>
+          </div>
+
+          <!-- Extracted OCR Preview & Action Buttons -->
+          <div *ngIf="ocrExtractedText" class="ocr-extracted-panel animate-fade-in">
+            <div class="ocr-extracted-header">
+              <span class="ocr-file-badge"><i class="fa-solid fa-image"></i> {{ ocrImageFileName }}</span>
+              <div class="ocr-action-buttons-row">
+                <button class="big-action-btn primary-gradient-btn" (click)="appendOcrToContent(false)">
+                  <i class="fa-solid fa-font"></i>
+                  <span>Append Text</span>
+                </button>
+                <button class="big-action-btn secondary-gradient-btn" (click)="appendOcrToContent(true)">
+                  <i class="fa-solid fa-image"></i>
+                  <span>Append Image & Text</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="ocr-preview-split">
+              <div *ngIf="ocrPreviewUrl" class="ocr-scanned-preview-thumb">
+                <img [src]="ocrPreviewUrl" alt="Scanned file" />
+              </div>
+              <div class="ocr-text-scroll">
+                <textarea [(ngModel)]="ocrExtractedText" class="ocr-text-editor" rows="5" placeholder="Extracted text..."></textarea>
+              </div>
+            </div>
+
+            <p class="ocr-note-hint">
+              <i class="fa-solid fa-circle-check"></i> You can edit the extracted text above before saving. Content is appended cleanly to your notes.
+            </p>
+          </div>
+
+          <!-- Success Alert -->
+          <div *ngIf="ocrSuccessBanner" class="ocr-alert-success animate-fade-in">
+            <i class="fa-solid fa-check-circle"></i> OCR content appended to notes successfully!
+          </div>
+
+          <!-- History Accordion -->
+          <details class="ocr-history-accordion" *ngIf="ocrHistory.length > 0">
+            <summary class="ocr-history-summary-touch">
+              <i class="fa-solid fa-clock-rotate-left"></i>
+              <span>View OCR Upload History ({{ ocrHistory.length }})</span>
+            </summary>
+            <div class="ocr-history-items-grid">
+              <div *ngFor="let item of ocrHistory" class="history-item-card">
+                <div class="history-card-top">
+                  <div class="history-card-title">
+                    <img *ngIf="item.imageUrl" [src]="item.imageUrl" class="history-mini-thumb" alt="" />
+                    <strong>{{ item.imageFileName }}</strong>
+                  </div>
+                  <small>{{ item.importedOn | date:'short' }}</small>
+                </div>
+                <div class="history-card-body">{{ item.extractedText }}</div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- =====================================================================
+             RICH TEXT EDITOR / VIEWER CONTAINER
+             ===================================================================== -->
+        <div class="editor-content-wrapper">
+          <!-- VIEW MODE (DEFAULT): Clean, Formatted Notes Display -->
+          <div *ngIf="editorViewMode === 'preview'" class="reader-mode-card glass-panel">
+            <div *ngIf="editorContent" class="rendered-content" [innerHTML]="editorContent"></div>
+            <div *ngIf="!editorContent" class="empty-notes-card">
+              <div class="empty-icon-circle">
+                <i class="fa-regular fa-file-lines"></i>
+              </div>
+              <h3>No notes written yet</h3>
+              <p>Click "Edit Notes" to write documentation, add headings, lists, or paste notes.</p>
+              <button class="big-action-btn primary-gradient-btn" (click)="enterEditMode()">
+                <i class="fa-solid fa-pen-to-square"></i>
+                <span>Edit Notes</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- EDIT MODE: CKEditor 5 -->
+          <div [hidden]="editorViewMode === 'preview'" class="ckeditor-card">
+            <div id="ckeditor-target"></div>
+          </div>
+        </div>
+
+        <!-- =====================================================================
+             TAGS FOOTER
+             ===================================================================== -->
+        <div class="tags-touch-card glass-panel">
+          <div class="tags-label">
+            <i class="fa-solid fa-tags text-cyan"></i>
+            <span>Topic Tags</span>
+          </div>
+
+          <div class="tags-touch-list">
+            <span *ngFor="let tag of parseTags(selectedNode.tags)" class="tag-touch-pill">
+              #{{ tag }}
+              <button class="tag-del-btn" (click)="removeTag(tag)"><i class="fa-solid fa-xmark"></i></button>
+            </span>
+
+            <div class="tag-input-touch-box">
+              <input 
+                type="text" 
+                placeholder="+ Add tag..." 
+                [(ngModel)]="newTagInput" 
+                (keydown.enter)="addTag()"
+              />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================================
+       FLOATING ACTION BUTTON (+) FOR QUICK ADDING
+       ========================================================================= -->
+  <button 
+    *ngIf="activeView === 'dashboard'" 
+    class="mobile-quick-fab-btn" 
+    (click)="openCreateModal(currentFolder || undefined)" 
+    [title]="currentFolder ? 'Add ' + getChildNodeType(currentFolder.nodeType) : 'New Book'">
+    <i class="fa-solid fa-plus"></i>
+  </button>
+
+  <button 
+    *ngIf="activeView === 'editor' && editorViewMode === 'preview'" 
+    class="mobile-quick-fab-btn" 
+    (click)="enterEditMode()" 
+    title="Edit / Add Notes">
+    <i class="fa-solid fa-plus"></i>
+  </button>
+
+  <!-- =========================================================================
+       3. MODALS (CREATE, RENAME, SEARCH)
+       ========================================================================= -->
+
+  <!-- Modal: Create New Item -->
+  <div class="modal-backdrop" *ngIf="isCreateModalOpen" (click)="closeCreateModal()">
+    <div class="modal-touch-card glass-panel animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="modal-touch-header">
+        <h3>
+          {{ modalParentNode ? 'Add New ' + newNodeType + ' inside ' + modalParentNode.name : 'Create New Book' }}
+        </h3>
+        <button class="modal-close-touch-btn" (click)="closeCreateModal()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-touch-body">
+        <div class="form-touch-group">
+          <label class="form-label">Name / Title</label>
+          <input 
+            type="text" 
+            [(ngModel)]="newNodeName" 
+            placeholder="e.g., Angular, Dependency Injection, Docker..." 
+            class="form-touch-input" 
+            autofocus 
+            (keydown.enter)="confirmCreateNode()"
+          />
+        </div>
+
+        <div class="form-touch-group" *ngIf="modalParentNode">
+          <label class="form-label">Node Type</label>
+          <select [(ngModel)]="newNodeType" class="form-touch-select">
+            <option *ngIf="modalParentNode.nodeType === 'Book'" value="Kaalam">Kaalam (🏛️)</option>
+            <option *ngIf="modalParentNode.nodeType === 'Kaalam'" value="Chapter">Chapter (📖)</option>
+            <option *ngIf="modalParentNode.nodeType === 'Chapter'" value="Topic">Topic (📝)</option>
+            <option *ngIf="modalParentNode.nodeType === 'Chapter'" value="Note">Note (📌)</option>
+            <option *ngIf="modalParentNode.nodeType !== 'Book' && modalParentNode.nodeType !== 'Kaalam' && modalParentNode.nodeType !== 'Chapter'" value="Topic">Topic (📝)</option>
+            <option *ngIf="modalParentNode.nodeType !== 'Book' && modalParentNode.nodeType !== 'Kaalam' && modalParentNode.nodeType !== 'Chapter'" value="Note">Note (📌)</option>
+          </select>
+        </div>
+
+        <div class="form-touch-group">
+          <label class="form-label">Priority</label>
+          <div class="priority-modal-touch-row">
+            <button type="button" class="priority-modal-pill" [class.selected]="newNodePriority === null" (click)="setNewNodePriority(null)">
+              Normal
+            </button>
+            <button type="button" class="priority-modal-pill low" [class.selected]="newNodePriority === Priority.Low" (click)="setNewNodePriority(Priority.Low)">
+              Low
+            </button>
+            <button type="button" class="priority-modal-pill med" [class.selected]="newNodePriority === Priority.Medium" (click)="setNewNodePriority(Priority.Medium)">
+              Medium
+            </button>
+            <button type="button" class="priority-modal-pill high" [class.selected]="newNodePriority === Priority.High" (click)="setNewNodePriority(Priority.High)">
+              High
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-touch-footer">
+        <button class="modal-touch-btn cancel-btn" (click)="closeCreateModal()">Cancel</button>
+        <button class="modal-touch-btn create-btn" (click)="confirmCreateNode()" [disabled]="!newNodeName.trim()">
+          Create Item
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Rename Node -->
+  <div class="modal-backdrop" *ngIf="isRenameModalOpen" (click)="isRenameModalOpen = false">
+    <div class="modal-touch-card glass-panel animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="modal-touch-header">
+        <h3>Rename Item</h3>
+        <button class="modal-close-touch-btn" (click)="isRenameModalOpen = false">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-touch-body">
+        <div class="form-touch-group">
+          <label class="form-label">Item Title</label>
+          <input 
+            type="text" 
+            [(ngModel)]="renameInput" 
+            class="form-touch-input" 
+            autofocus 
+            (keydown.enter)="confirmRename()"
+          />
+        </div>
+      </div>
+
+      <div class="modal-touch-footer">
+        <button class="modal-touch-btn cancel-btn" (click)="isRenameModalOpen = false">Cancel</button>
+        <button class="modal-touch-btn create-btn" (click)="confirmRename()">Save Name</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Delete Confirmation -->
+  <div class="modal-backdrop" *ngIf="isDeleteModalOpen" (click)="cancelDelete()">
+    <div class="modal-touch-card glass-panel animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="modal-touch-header">
+        <h3 style="color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Delete Item</h3>
+        <button class="modal-close-touch-btn" (click)="cancelDelete()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="modal-touch-body">
+        <p style="font-size: 1rem; line-height: 1.5; color: var(--vault-text-secondary); margin-bottom: 0.5rem;">
+          Are you sure you want to delete <strong style="color: var(--vault-text-primary);">"{{ nodeToDelete?.name }}"</strong> and all of its contents?
+        </p>
+        <p style="font-size: 0.85rem; color: #ef4444;">
+          This action cannot be undone.
+        </p>
+      </div>
+
+      <div class="modal-touch-footer">
+        <button class="modal-touch-btn cancel-btn" (click)="cancelDelete()">Cancel</button>
+        <button class="modal-touch-btn" style="background: #ef4444; color: #ffffff;" (click)="confirmDelete()">
+          Delete Permanently
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Global Search -->
+  <div class="modal-backdrop" *ngIf="isSearchModalOpen" (click)="isSearchModalOpen = false">
+    <div class="search-modal-touch-card glass-panel animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="search-modal-header">
+        <i class="fa-solid fa-magnifying-glass search-leading-icon"></i>
+        <input 
+          type="text" 
+          placeholder="Search by topic title, content, OCR text, or tags..." 
+          [(ngModel)]="searchQuery" 
+          (ngModelChange)="onSearchInput()"
+          class="search-touch-input"
+          autofocus
+        />
+        <button class="modal-close-touch-btn" (click)="isSearchModalOpen = false">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="search-results-touch-list">
+        <div *ngIf="isSearching" class="search-state-msg">
+          <i class="fa-solid fa-circle-notch fa-spin"></i> Searching vault...
+        </div>
+
+        <div *ngIf="!isSearching && searchQuery && searchResults.length === 0" class="search-state-msg">
+          No matches found for "{{ searchQuery }}"
+        </div>
+
+        <div *ngFor="let item of searchResults" class="search-result-touch-item" (click)="selectSearchResult(item)">
+          <div class="search-res-top">
+            <span class="res-icon">{{ getNodeTypeIcon(item.nodeType) }}</span>
+            <strong class="res-name">{{ item.name }}</strong>
+            <span class="res-badge">{{ item.matchSource }}</span>
+          </div>
+
+          <div *ngIf="item.breadcrumbs.length > 0" class="res-breadcrumb-trail">
+            <span *ngFor="let b of item.breadcrumbs; let last = last">
+              {{ b.name }} <span *ngIf="!last">›</span>
+            </span>
+          </div>
+
+          <p *ngIf="item.contentSnippet" class="res-snippet">
+            {{ item.contentSnippet }}
+          </p>
+        </div>
+      </div>
+    </div>
+  <!-- Modal: Image Lightbox Preview -->
+  <div class="modal-backdrop image-lightbox-backdrop" *ngIf="selectedPreviewImage" (click)="closeImagePreview()">
+    <div class="lightbox-modal-content glass-panel animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="lightbox-header">
+        <span class="lightbox-filename"><i class="fa-solid fa-image"></i> {{ selectedPreviewImage.fileName }}</span>
+        <button class="modal-close-touch-btn" (click)="closeImagePreview()">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="lightbox-body">
+        <img [src]="selectedPreviewImage.url" [alt]="selectedPreviewImage.fileName" class="lightbox-img" />
+      </div>
+
+      <div class="lightbox-footer">
+        <span class="lightbox-meta">{{ (selectedPreviewImage.sizeBytes / 1024).toFixed(1) }} KB • Uploaded {{ selectedPreviewImage.uploadedOn | date:'medium' }}</span>
+        <div class="lightbox-actions">
+          <button class="big-action-btn primary-gradient-btn" (click)="insertImageIntoNote(selectedPreviewImage); closeImagePreview();">
+            <i class="fa-solid fa-circle-plus"></i>
+            <span>Insert into Note</span>
+          </button>
+          <button class="big-action-btn danger-hover" (click)="deleteImage(selectedPreviewImage); closeImagePreview();">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Delete</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>

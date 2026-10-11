@@ -1,0 +1,25 @@
+# Build Stage
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+WORKDIR /src
+
+COPY backend/KnowledgeVault.Api/KnowledgeVault.Api.csproj backend/KnowledgeVault.Api/
+RUN dotnet restore backend/KnowledgeVault.Api/KnowledgeVault.Api.csproj
+
+COPY backend/KnowledgeVault.Api/ backend/KnowledgeVault.Api/
+WORKDIR /src/backend/KnowledgeVault.Api
+RUN dotnet publish -c Release -o /app/publish
+
+# Runtime Stage
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Install Tesseract OCR native libraries for Linux runtime if needed
+RUN apt-get update && apt-get install -y tesseract-ocr libtesseract-dev && rm -rf /var/lib/apt/lists/*
+
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+VOLUME ["/app/data", "/app/storage"]
+ENTRYPOINT ["dotnet", "KnowledgeVault.Api.dll"]
