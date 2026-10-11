@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../environments/environment';
 import {
   KNode, KNodeTree, Breadcrumb, SearchResult, OcrResult, NodeImage,
   CreateNodeRequest, UpdateNodeRequest, ReorderItem
@@ -10,11 +11,44 @@ import {
 export class NodeService {
   constructor(private http: HttpClient) {}
 
-  private get apiUrl(): string {
-    if (typeof window !== 'undefined' && window.location && window.location.hostname) {
+  public get apiUrl(): string {
+    // 1. Check user-configured override in localStorage (useful for hosted GitHub Pages)
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const customUrl = window.localStorage.getItem('topiks_api_url');
+      if (customUrl && customUrl.trim()) {
+        return customUrl.trim().replace(/\/+$/, '');
+      }
+    }
+
+    // 2. Check window runtime injection
+    if (typeof window !== 'undefined' && (window as any).__TOPIKS_API_URL__) {
+      return (window as any).__TOPIKS_API_URL__.replace(/\/+$/, '');
+    }
+
+    // 3. Check environment configuration (production build)
+    if (environment && environment.apiUrl && environment.apiUrl.trim()) {
+      return environment.apiUrl.trim().replace(/\/+$/, '');
+    }
+
+    // 4. Fallback to same host on port 5000 (local dev / Docker)
+    if (typeof window !== 'undefined' && window.location && window.location.hostname && window.location.hostname !== 'localhost') {
+      // If hosted on GitHub Pages or custom domain without configured API
+      if (window.location.hostname.endsWith('github.io') || window.location.hostname.endsWith('pages.dev')) {
+        return 'http://localhost:5000/api';
+      }
       return `http://${window.location.hostname}:5000/api`;
     }
     return 'http://localhost:5000/api';
+  }
+
+  public setCustomApiUrl(url: string | null): void {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      if (url && url.trim()) {
+        window.localStorage.setItem('topiks_api_url', url.trim());
+      } else {
+        window.localStorage.removeItem('topiks_api_url');
+      }
+    }
   }
 
   private getNoCacheOptions(extraParams?: Record<string, string>): { headers: HttpHeaders; params: HttpParams } {

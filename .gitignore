@@ -1,0 +1,39 @@
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# .NET / C# Build Artifacts
+**/bin/
+**/obj/
+*.log
+backend/KnowledgeVault.Api/bin/
+backend/KnowledgeVault.Api/obj/
+
+# Local Database & Storage Data
+backend/KnowledgeVault.Api/data/
+**/knowledgevault.db*
+*.db
+*.db-shm
+*.db-wal
+backend/KnowledgeVault.Api/storage/images/*
+backend/KnowledgeVault.Api/storage/ocr/*
+backend/KnowledgeVault.Api/storage/exports/*
+backend/KnowledgeVault.Api/storage/thumbnails/*
+!backend/KnowledgeVault.Api/storage/.gitkeep
+
+# Node & Angular Build Artifacts
+node_modules/
+frontend/node_modules/
+frontend/.angular/
+frontend/dist/
+dist/
+.npm
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

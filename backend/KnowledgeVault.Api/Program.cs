@@ -1,8 +1,16 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.HttpOverrides;
 using KnowledgeVault.Api.Data;
 using KnowledgeVault.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Respect PORT environment variable from cloud hosts (Render, Railway, etc.)
+var envPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(envPort))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{envPort}");
+}
 
 // ── Database ─────────────────────────────────────────────
 var dbPath = Path.Combine(builder.Environment.ContentRootPath, "data", "knowledgevault.db");
@@ -52,6 +60,11 @@ using (var scope = app.Services.CreateScope())
 }
 
 // ── Middleware Pipeline ──────────────────────────────────
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseCors("AllowAngular");
 
 // Prevent any caching of API responses
