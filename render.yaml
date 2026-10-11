@@ -13,15 +13,14 @@ services:
         value: Production
       - key: ASPNETCORE_URLS
         value: http://+:8080
-    autoDeploy: true
 
-  # ── Optional: Frontend Static Site on Render ──
-  - type: static
+  # ── Frontend Static Site on Render ──
+  - type: web
     name: topiks-frontend
+    runtime: static
     buildCommand: cd frontend && npm install --legacy-peer-deps && npm run build --configuration=production
     staticPublishPath: ./frontend/dist/frontend
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
-    autoDeploy: true
