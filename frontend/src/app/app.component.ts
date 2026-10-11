@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NodeService } from './services/node.service';
@@ -31,8 +31,14 @@ export class AppComponent implements OnInit, OnDestroy {
   availableTags: string[] = [];
   dashboardSearchQuery = '';
 
+  // Quick Topic Navigator State (3 Cascading Dropdowns, Collapsed by default)
+  isQuickNavOpen = false;
+  quickNavBookId = '';
+  quickNavKaalamId = '';
+  quickNavChapterId = '';
+
   // Theme
-  isDarkMode = true;
+  isDarkMode = false;
 
   // Editor & View State
   editorInstance: any = null;
@@ -56,16 +62,16 @@ export class AppComponent implements OnInit, OnDestroy {
   isSearching = false;
   isSearchModalOpen = false;
 
-  // OCR Multi-Upload State
-  isUploadingOcr = false;
-  ocrExtractedText = '';
-  ocrImageFileName = '';
-  ocrPreviewUrl: string | null = null;
-  ocrProgress = 0;
-  ocrStatusText = '';
+  // Photo Scanner & Image State (Direct photo display & compression)
+  isScanningImage = false;
+  scanStatusText = '';
+  scanProgress = 0;
+  scanSuccessBanner = false;
+  scanCompressionInfo = '';
+  scanError = '';
+  lastScannedImageUrl: string | null = null;
+  lastScannedFileName = '';
   ocrHistory: OcrResult[] = [];
-  ocrSuccessBanner = false;
-  ocrError = '';
 
   // Create / Edit Modal State
   isCreateModalOpen = false;
@@ -104,6 +110,16 @@ export class AppComponent implements OnInit, OnDestroy {
     private nodeService: NodeService,
     private cd: ChangeDetectorRef
   ) {}
+
+  @HostListener('window:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+      if (this.activeView === 'editor' && this.selectedNode && this.editorViewMode === 'edit') {
+        event.preventDefault();
+        this.saveCurrentNode(true);
+      }
+    }
+  }
 
   ngOnInit(): void {
     this.initTheme();
@@ -168,7 +184,7 @@ export class AppComponent implements OnInit, OnDestroy {
   // ── Theme Handling ─────────────────────────────────────────
   initTheme(): void {
     const saved = localStorage.getItem('topiks_theme');
-    this.isDarkMode = saved ? saved === 'dark' : true;
+    this.isDarkMode = saved ? saved === 'dark' : false;
     this.applyTheme();
   }
 
@@ -337,6 +353,67 @@ export class AppComponent implements OnInit, OnDestroy {
     }
   }
 
+  // ── Quick Topic Navigator (3 Cascading Dropdowns) ───────────
+  toggleQuickNav(): void {
+    this.isQuickNavOpen = !this.isQuickNavOpen;
+  }
+
+  getQuickNavBooks(): KNodeTree[] {
+    return this.tree.filter(n => n.nodeType === NodeType.Book);
+  }
+
+  getQuickNavKaalams(): KNodeTree[] {
+    if (!this.quickNavBookId) return [];
+    const book = this.findNodeInTree(this.quickNavBookId, this.tree);
+    if (!book || !book.children) return [];
+    return book.children.filter(n => n.nodeType === NodeType.Kaalam);
+  }
+
+  getQuickNavChapters(): KNodeTree[] {
+    if (!this.quickNavKaalamId) return [];
+    const kaalam = this.findNodeInTree(this.quickNavKaalamId, this.tree);
+    if (!kaalam || !kaalam.children) return [];
+    return kaalam.children.filter(n => n.nodeType === NodeType.Chapter);
+  }
+
+  getQuickNavTopics(): KNodeTree[] {
+    if (!this.quickNavChapterId) return [];
+    const chapter = this.findNodeInTree(this.quickNavChapterId, this.tree);
+    if (!chapter || !chapter.children) return [];
+    return chapter.children.filter(n => n.nodeType === NodeType.Topic || n.nodeType === NodeType.Note);
+  }
+
+  getSelectedQuickChapter(): KNodeTree | null {
+    if (!this.quickNavChapterId) return null;
+    return this.findNodeInTree(this.quickNavChapterId, this.tree);
+  }
+
+  onQuickNavBookChange(): void {
+    this.quickNavKaalamId = '';
+    this.quickNavChapterId = '';
+  }
+
+  onQuickNavKaalamChange(): void {
+    this.quickNavChapterId = '';
+  }
+
+  onQuickNavChapterChange(): void {
+    // Keeps chapter selected and ready with topics
+  }
+
+  browseQuickNavChapter(): void {
+    const chapter = this.getSelectedQuickChapter();
+    if (chapter) {
+      this.enterFolder(chapter);
+    }
+  }
+
+  resetQuickNav(): void {
+    this.quickNavBookId = '';
+    this.quickNavKaalamId = '';
+    this.quickNavChapterId = '';
+  }
+
   // Open a node directly in the Editor / Reader
   openNodeInEditor(node: KNodeTree | KNode): void {
     this.selectNodeById(node.id, true);
@@ -419,13 +496,14 @@ export class AppComponent implements OnInit, OnDestroy {
           this.loader = loader;
         }
         upload() {
-          return this.loader.file.then((file: File) => {
+          return this.loader.file.then(async (file: File) => {
+            const { file: compressedFile } = await self.compressImageFile(file);
             return new Promise((resolve, reject) => {
               if (!self.selectedNode) {
                 reject('No topic selected');
                 return;
               }
-              self.nodeService.uploadNodeImage(self.selectedNode.id, file).subscribe({
+              self.nodeService.uploadNodeImage(self.selectedNode.id, compressedFile).subscribe({
                 next: (res) => {
                   self.loadNodeImages(self.selectedNode!.id);
                   resolve({ default: res.url });
@@ -472,7 +550,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ── Save Content ───────────────────────────────────────────
-  saveCurrentNode(): void {
+  saveCurrentNode(switchToViewMode: boolean = true): void {
     if (!this.selectedNode) return;
 
     if (this.editorInstance) {
@@ -489,8 +567,12 @@ export class AppComponent implements OnInit, OnDestroy {
     }).subscribe({
       next: (updated) => {
         this.selectedNode = updated;
+        this.editorContent = updated.content || '';
         this.isSaving = false;
         this.saveSuccessMessage = true;
+        if (switchToViewMode) {
+          this.editorViewMode = 'preview';
+        }
         setTimeout(() => this.saveSuccessMessage = false, 2500);
         this.loadTree(this.selectedNode.id);
         this.cd.markForCheck();
@@ -519,7 +601,7 @@ export class AppComponent implements OnInit, OnDestroy {
   setPriority(p: Priority | null): void {
     if (!this.selectedNode) return;
     this.selectedNode.priority = p;
-    this.saveCurrentNode();
+    this.saveCurrentNode(false);
   }
 
   // ── Tags Management ────────────────────────────────────────
@@ -531,7 +613,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!currentTags.includes(tag)) {
       currentTags.push(tag);
       this.selectedNode.tags = currentTags.join(',');
-      this.saveCurrentNode();
+      this.saveCurrentNode(false);
       this.extractAllTags();
     }
     this.newTagInput = '';
@@ -541,7 +623,7 @@ export class AppComponent implements OnInit, OnDestroy {
     if (!this.selectedNode) return;
     const currentTags = parseTags(this.selectedNode.tags).filter(t => t !== tagToRemove);
     this.selectedNode.tags = currentTags.join(',');
-    this.saveCurrentNode();
+    this.saveCurrentNode(false);
     this.extractAllTags();
   }
 
@@ -567,7 +649,7 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
-  onImageFileSelected(event: any): void {
+  async onImageFileSelected(event: any): Promise<void> {
     const files: FileList | null = event.target.files;
     if (!files || files.length === 0 || !this.selectedNode) return;
 
@@ -578,7 +660,8 @@ export class AppComponent implements OnInit, OnDestroy {
     let completed = 0;
 
     for (const file of fileList) {
-      this.nodeService.uploadNodeImage(this.selectedNode.id, file).subscribe({
+      const { file: compressedFile } = await this.compressImageFile(file);
+      this.nodeService.uploadNodeImage(this.selectedNode.id, compressedFile).subscribe({
         next: () => {
           completed++;
           if (completed === fileList.length) {
@@ -616,7 +699,7 @@ export class AppComponent implements OnInit, OnDestroy {
       this.editorInstance.setData(this.editorContent);
     }
 
-    this.saveCurrentNode();
+    this.saveCurrentNode(false);
     this.saveSuccessMessage = true;
     setTimeout(() => this.saveSuccessMessage = false, 2500);
   }
@@ -640,103 +723,148 @@ export class AppComponent implements OnInit, OnDestroy {
     this.selectedPreviewImage = null;
   }
 
-  // ── OCR Multi-Upload Feature ───────────────────────────────
-  onOcrFileSelected(event: any): void {
+  // ── Client-side Image Compression & File Size Reduction ─────
+  formatBytes(bytes: number): string {
+    if (!bytes || bytes <= 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  async compressImageFile(file: File, maxWidth = 1600, maxHeight = 1600, quality = 0.82): Promise<{ file: File; originalSize: number; compressedSize: number }> {
+    const originalSize = file.size;
+    if (!file.type.startsWith('image/') || file.type === 'image/svg+xml' || file.type === 'image/gif') {
+      return { file, originalSize, compressedSize: file.size };
+    }
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let { width, height } = img;
+
+          // Scale dimensions if larger than maxWidth or maxHeight
+          if (width > maxWidth || height > maxHeight) {
+            if (width / height > maxWidth / maxHeight) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            } else {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve({ file, originalSize, compressedSize: file.size });
+            return;
+          }
+
+          // White background prevents black artifacts when converting images with transparency to JPEG
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, width, height);
+          ctx.drawImage(img, 0, 0, width, height);
+
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve({ file, originalSize, compressedSize: file.size });
+              return;
+            }
+            if (blob.size < file.size) {
+              const baseName = file.name.substring(0, file.name.lastIndexOf('.')) || file.name;
+              const compressedFile = new File([blob], `${baseName}.jpg`, {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+              });
+              resolve({ file: compressedFile, originalSize, compressedSize: blob.size });
+            } else {
+              resolve({ file, originalSize, compressedSize: file.size });
+            }
+          }, 'image/jpeg', quality);
+        };
+        img.onerror = () => resolve({ file, originalSize, compressedSize: file.size });
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve({ file, originalSize, compressedSize: file.size });
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ── Photo Scanner Feature (Direct Image Display & File Size Reduction) ──
+  async onScanImageSelected(event: any): Promise<void> {
     const file: File = event.target.files?.[0];
     if (!file || !this.selectedNode) return;
-
-    if (this.ocrPreviewUrl) {
-      URL.revokeObjectURL(this.ocrPreviewUrl);
-    }
-    this.ocrPreviewUrl = URL.createObjectURL(file);
     event.target.value = '';
 
-    this.isUploadingOcr = true;
-    this.ocrImageFileName = file.name;
-    this.ocrExtractedText = '';
-    this.ocrError = '';
-    this.ocrProgress = 10;
-    this.ocrStatusText = 'Starting scanner...';
+    this.isScanningImage = true;
+    this.scanProgress = 25;
+    this.scanStatusText = 'Optimizing & reducing file size...';
+    this.scanError = '';
+    this.scanSuccessBanner = false;
 
-    const saveToServer = (text: string) => {
-      this.ocrStatusText = 'Saving scan to vault...';
-      this.nodeService.uploadOcr(this.selectedNode!.id, file, text).subscribe({
+    try {
+      // 1. File size reduction
+      const { file: compressedFile, originalSize, compressedSize } = await this.compressImageFile(file);
+      this.scanProgress = 65;
+      this.scanStatusText = 'Uploading photo to note...';
+
+      const savedPercent = originalSize > compressedSize
+        ? Math.round(((originalSize - compressedSize) / originalSize) * 100)
+        : 0;
+
+      // 2. Upload photo
+      this.nodeService.uploadNodeImage(this.selectedNode.id, compressedFile).subscribe({
         next: (res) => {
-          this.isUploadingOcr = false;
-          this.ocrStatusText = '';
-          this.ocrProgress = 100;
-          this.ocrExtractedText = res.extractedText || text;
-          this.loadOcrHistory(this.selectedNode!.id);
+          this.scanProgress = 100;
+          this.isScanningImage = false;
+          this.lastScannedImageUrl = res.url;
+          this.lastScannedFileName = compressedFile.name;
+          this.scanSuccessBanner = true;
+          this.scanCompressionInfo = savedPercent > 0
+            ? `Size reduced from ${this.formatBytes(originalSize)} to ${this.formatBytes(compressedSize)} (${savedPercent}% smaller)`
+            : `File size: ${this.formatBytes(compressedSize)}`;
+
+          // 3. Display the image as it is directly in the textbox / note
+          const imgBlock = `
+            <figure class="note-image-figure" style="margin: 1.5rem 0; text-align: center;">
+              <img src="${res.url}" alt="${compressedFile.name}" style="max-width: 100%; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.18);" />
+            </figure>
+          `;
+
+          this.editorContent = (this.editorContent || '') + imgBlock;
+
+          if (this.editorInstance) {
+            this.editorInstance.setData(this.editorContent);
+          }
+
+          // Persist the updated note content
+          this.saveCurrentNode(false);
           this.loadNodeImages(this.selectedNode!.id);
           this.cd.markForCheck();
         },
         error: (err) => {
-          this.isUploadingOcr = false;
-          this.ocrStatusText = '';
-          this.ocrExtractedText = text;
-          console.error('OCR Upload save error:', err);
+          this.isScanningImage = false;
+          this.scanError = 'Failed to upload scanned image. Please try again.';
+          console.error('Scan upload error:', err);
           this.cd.markForCheck();
         }
       });
-    };
-
-    if (typeof Tesseract !== 'undefined') {
-      this.ocrStatusText = 'Reading text with OCR engine...';
-      Tesseract.recognize(
-        file,
-        'eng',
-        {
-          logger: (m: any) => {
-            if (m && m.status === 'recognizing text') {
-              const p = Math.round((m.progress || 0) * 100);
-              this.ocrProgress = Math.min(95, Math.round(p * 0.85) + 10);
-              this.ocrStatusText = `Recognizing text (${p}%)...`;
-              this.cd.markForCheck();
-            }
-          }
-        }
-      ).then((out: any) => {
-        const text = out?.data?.text?.trim() || '[No readable text found in image]';
-        saveToServer(text);
-      }).catch((err: any) => {
-        console.warn('Client Tesseract failed, falling back to server:', err);
-        saveToServer('');
-      });
-    } else {
-      saveToServer('');
+    } catch (err) {
+      this.isScanningImage = false;
+      this.scanError = 'Error processing image.';
+      console.error(err);
+      this.cd.markForCheck();
     }
   }
 
-  appendOcrToContent(includeImage = false): void {
-    if (!this.ocrExtractedText || !this.selectedNode) return;
-
-    let imgHtml = '';
-    if (includeImage && this.ocrPreviewUrl) {
-      const matched = this.nodeImages.find(i => i.fileName === this.ocrImageFileName);
-      const src = matched ? matched.url : this.ocrPreviewUrl;
-      imgHtml = `
-        <div style="text-align: center; margin: 1rem 0;">
-          <img src="${src}" alt="" style="max-width: 100%; max-height: 380px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.18);" />
-        </div>
-      `;
-    }
-
-    const ocrBlock = `
-      <div class="ocr-import-block" style="margin: 1.5rem 0; padding: 1.2rem; border-left: 4px solid #588157; background: rgba(88, 129, 87, 0.12); border-radius: 10px;">
-        ${imgHtml}
-        <p style="white-space: pre-wrap; font-size: 0.95rem; margin: 0;">${this.ocrExtractedText}</p>
-      </div>
-    `;
-
-    this.editorContent = (this.editorContent || '') + ocrBlock;
-
-    if (this.editorInstance) {
-      this.editorInstance.setData(this.editorContent);
-    }
-
-    this.saveCurrentNode();
-    this.ocrSuccessBanner = true;
-    setTimeout(() => this.ocrSuccessBanner = false, 3000);
+  onOcrFileSelected(event: any): void {
+    this.onScanImageSelected(event);
   }
 
   loadOcrHistory(nodeId: string): void {

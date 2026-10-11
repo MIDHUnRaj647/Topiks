@@ -330,3 +330,15 @@ button {
     margin: 1rem 0;
   }
 }
+
+/* Brand Logo Adaptations */
+body:not(.theme-dark) .brand-logo-img {
+  mix-blend-mode: multiply;
+}
+
+body.theme-dark .brand-logo-img {
+  background: rgba(255, 255, 255, 0.94);
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
