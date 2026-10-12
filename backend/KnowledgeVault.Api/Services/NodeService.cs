@@ -203,9 +203,9 @@ public class NodeService
 
     public async Task<bool> ClearAllNodesAsync()
     {
-        await _db.Database.ExecuteSqlRawAsync("DELETE FROM NodeImages;");
-        await _db.Database.ExecuteSqlRawAsync("DELETE FROM NodeOcrImports;");
-        await _db.Database.ExecuteSqlRawAsync("DELETE FROM Nodes;");
+        await _db.NodeImages.ExecuteDeleteAsync();
+        await _db.NodeOcrImports.ExecuteDeleteAsync();
+        await _db.Nodes.ExecuteDeleteAsync();
         return true;
     }
 

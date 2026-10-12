@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.HttpOverrides;
 using KnowledgeVault.Api.Data;
 using KnowledgeVault.Api.Services;
 
+using Npgsql;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Respect PORT environment variable from cloud hosts (Render, Railway, etc.)
@@ -12,12 +14,26 @@ if (!string.IsNullOrEmpty(envPort))
     builder.WebHost.UseUrls($"http://0.0.0.0:{envPort}");
 }
 
-// ── Database ─────────────────────────────────────────────
-var dbPath = Path.Combine(builder.Environment.ContentRootPath, "data", "knowledgevault.db");
-Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+// ── Database (PostgreSQL on Cloud / SQLite for Local Dev) ──
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? Environment.GetEnvironmentVariable("POSTGRES_CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite($"Data Source={dbPath}"));
+if (!string.IsNullOrWhiteSpace(rawConnectionString))
+{
+    var pgConnString = ResolvePostgresConnectionString(rawConnectionString);
+    Console.WriteLine("[Database] Configured PostgreSQL database connection.");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseNpgsql(pgConnString));
+}
+else
+{
+    var dbPath = Path.Combine(builder.Environment.ContentRootPath, "data", "knowledgevault.db");
+    Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+    Console.WriteLine($"[Database] No DATABASE_URL found. Using local SQLite at: {dbPath}");
+    builder.Services.AddDbContext<AppDbContext>(options =>
+        options.UseSqlite($"Data Source={dbPath}"));
+}
 
 // ── Services ─────────────────────────────────────────────
 builder.Services.AddScoped<NodeService>();
@@ -94,3 +110,43 @@ app.UseStaticFiles(new StaticFileOptions
 app.MapControllers();
 
 app.Run();
+
+// ── Helpers ──────────────────────────────────────────────
+static string ResolvePostgresConnectionString(string connectionInput)
+{
+    if (string.IsNullOrWhiteSpace(connectionInput))
+        return connectionInput;
+
+    var trimmed = connectionInput.Trim();
+    if (!trimmed.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !trimmed.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        return trimmed;
+    }
+
+    try
+    {
+        var uri = new Uri(trimmed);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        var database = uri.AbsolutePath.TrimStart('/');
+
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Database = database,
+            Username = username,
+            Password = password,
+            SslMode = Npgsql.SslMode.Require
+        };
+
+        return builder.ConnectionString;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[Database] Warning: Could not parse PostgreSQL URL as URI ({ex.Message}), using raw string.");
+        return trimmed;
+    }
+}
