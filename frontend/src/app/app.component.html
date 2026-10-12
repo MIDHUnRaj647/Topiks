@@ -13,6 +13,14 @@
 
     <!-- Header Actions (Large, Comfortable Touch Targets) -->
     <div class="header-right">
+      <!-- BAMS PG Entrance Test Simulator -->
+      <button class="header-touch-btn mcq-nav-btn" (click)="activeView = 'mcq'"
+        [class.active-nav]="activeView === 'mcq'"
+        title="BAMS PG Entrance (AIAPGET) Mock Test">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <span class="btn-label-desktop">AIAPGET Test</span>
+      </button>
+
       <!-- Search Button -->
       <button class="header-touch-btn search-btn" (click)="isSearchModalOpen = true" aria-label="Search Vault">
         <i class="fa-solid fa-magnifying-glass"></i>
@@ -697,6 +705,13 @@
         </div>
 
       </div>
+    </section>
+
+    <!-- =======================================================================
+         VIEW C: BAMS PG (AIAPGET) MCQ TEST SIMULATOR
+         ======================================================================= -->
+    <section class="mcq-view" *ngIf="activeView === 'mcq'">
+      <app-bams-mcq-test (exit)="activeView = 'dashboard'"></app-bams-mcq-test>
     </section>
 
   </main>

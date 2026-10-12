@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, ElementRef, ViewChild, ChangeDetectorRef,
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NodeService } from './services/node.service';
+import { BamsMcqTestComponent } from './components/bams-mcq-test/bams-mcq-test.component';
 import {
   KNode, KNodeTree, NodeType, Priority, Breadcrumb, SearchResult, OcrResult, NodeImage,
   getNodeTypeIcon, getChildNodeType, getPriorityColor, parseTags
@@ -13,7 +14,7 @@ declare const Tesseract: any;
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, BamsMcqTestComponent],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
@@ -23,7 +24,7 @@ export class AppComponent implements OnInit, OnDestroy {
   currentFolder: KNodeTree | null = null;
   selectedNode: KNode | null = null;
   breadcrumbs: Breadcrumb[] = [];
-  activeView: 'dashboard' | 'editor' = 'dashboard';
+  activeView: 'dashboard' | 'editor' | 'mcq' = 'dashboard';
 
   // Filters
   filterFavoritesOnly = false;
@@ -142,17 +143,15 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private startRealtimeSync(): void {
     if (typeof window !== 'undefined') {
+      // Sync on window focus or when user returns to tab, without aggressive background polling
       window.addEventListener('focus', this.onWindowFocus);
       document.addEventListener('visibilitychange', this.onVisibilityChange);
-      this.syncInterval = setInterval(() => {
-        this.silentSync();
-      }, 2500);
     }
   }
 
   private silentSync(): void {
-    // Never interrupt user when saving or actively editing in rich editor
-    if (this.isSaving || (this.activeView === 'editor' && this.editorViewMode === 'edit')) {
+    // Never run sync when in MCQ test mode, saving, or actively editing in rich editor
+    if (this.activeView === 'mcq' || this.isSaving || (this.activeView === 'editor' && this.editorViewMode === 'edit')) {
       return;
     }
 

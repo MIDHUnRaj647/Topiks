@@ -85,6 +85,30 @@
   &.search-btn {
     min-width: 46px;
   }
+
+  &.mcq-nav-btn {
+    min-width: 46px;
+    i {
+      color: var(--accent-amber, #e5a96d);
+    }
+
+    &.active-nav {
+      background: var(--primary, #588157);
+      color: #fff;
+      border-color: var(--primary, #588157);
+
+      i {
+        color: #fff;
+      }
+    }
+  }
+}
+
+.mcq-view {
+  width: 100%;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ==========================================================================

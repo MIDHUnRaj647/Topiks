@@ -98,6 +98,384 @@ body.theme-light {
   --shadow-glow: 0 0 20px rgba(88, 129, 87, 0.22);
 }
 
+/* BAMS MCQ Test - Light Theme Accessibility & High Contrast Enhancements */
+body.theme-light .mcq-container {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+
+  .mcq-header {
+    background: var(--bg-glass);
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .mcq-title {
+    color: #1b2821 !important;
+  }
+
+  .mcq-subtitle {
+    color: #4a6750 !important;
+  }
+
+  .back-vault-btn,
+  .icon-action-btn {
+    background: #ffffff !important;
+    border-color: rgba(58, 90, 64, 0.25) !important;
+    color: #213328 !important;
+
+    &:hover {
+      background: #3a5a40 !important;
+      color: #ffffff !important;
+    }
+  }
+
+  /* Lobby View */
+  .lobby-hero-card,
+  .settings-card,
+  .config-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(58, 90, 64, 0.22) !important;
+    box-shadow: 0 8px 24px rgba(52, 78, 65, 0.08) !important;
+  }
+
+  .hero-badge {
+    background: rgba(217, 119, 6, 0.12) !important;
+    border-color: rgba(217, 119, 6, 0.3) !important;
+    color: #92400e !important;
+  }
+
+  .hero-heading {
+    color: #1b2821 !important;
+    background: none !important;
+    -webkit-text-fill-color: #1b2821 !important;
+  }
+
+  .hero-description {
+    color: #344e41 !important;
+
+    strong {
+      color: #1b2821 !important;
+      font-weight: 700;
+    }
+  }
+
+  .stat-card {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(52, 78, 65, 0.06) !important;
+  }
+
+  .stat-value {
+    color: #1b2821 !important;
+
+    &.fresh-accent {
+      color: #2b8a3e !important;
+    }
+
+    &.priority-accent {
+      color: #b45309 !important;
+    }
+  }
+
+  .stat-label {
+    color: #4a6750 !important;
+    font-weight: 700 !important;
+  }
+
+  .scheme-item {
+    color: #344e41 !important;
+  }
+
+  .scheme-pill {
+    &.positive {
+      background: rgba(43, 138, 62, 0.14) !important;
+      color: #2b8a3e !important;
+    }
+    &.negative {
+      background: rgba(214, 104, 83, 0.14) !important;
+      color: #c92a2a !important;
+    }
+    &.neutral {
+      background: #e8e6dd !important;
+      border: 1px solid rgba(58, 90, 64, 0.2) !important;
+      color: #213328 !important;
+    }
+    &.duration {
+      background: rgba(217, 119, 6, 0.15) !important;
+      color: #92400e !important;
+    }
+  }
+
+  .config-label {
+    color: #1b2821 !important;
+  }
+
+  .timer-pill-btn {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.25) !important;
+    color: #213328 !important;
+
+    &:hover {
+      background: #ffffff !important;
+      border-color: #3a5a40 !important;
+    }
+
+    &.active {
+      background: #3a5a40 !important;
+      color: #ffffff !important;
+      border-color: #3a5a40 !important;
+      box-shadow: 0 2px 8px rgba(58, 90, 64, 0.25) !important;
+    }
+  }
+
+  .url-input-group input {
+    background: #ffffff !important;
+    border: 1px solid rgba(58, 90, 64, 0.3) !important;
+    color: #1b2821 !important;
+  }
+
+  .settings-hint {
+    color: #344e41 !important;
+  }
+
+  .start-test-btn {
+    background: linear-gradient(135deg, #3a5a40 0%, #284030 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 8px 20px rgba(52, 78, 65, 0.25) !important;
+
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #466e4e 0%, #2e4a37 100%) !important;
+    }
+  }
+
+  .reset-history-btn {
+    border-color: rgba(58, 90, 64, 0.3) !important;
+    color: #588157 !important;
+
+    &:hover {
+      color: #c92a2a !important;
+      border-color: #c92a2a !important;
+    }
+  }
+
+  /* Active Exam Mode */
+  .q-meta-card,
+  .q-main-card,
+  .exam-footer-toolbar,
+  .palette-column {
+    background: #ffffff !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+    box-shadow: 0 4px 16px rgba(52, 78, 65, 0.06) !important;
+  }
+
+  .q-text {
+    color: #1b2821 !important;
+  }
+
+  .q-subject-pill {
+    background: rgba(58, 90, 64, 0.12) !important;
+    color: #213328 !important;
+  }
+
+  .q-sthana-pill {
+    background: rgba(88, 129, 87, 0.15) !important;
+    color: #344e41 !important;
+  }
+
+  .q-exam-tag {
+    color: #588157 !important;
+  }
+
+  .option-card {
+    background: #f4f3ec !important;
+    border: 2px solid rgba(58, 90, 64, 0.2) !important;
+
+    &:hover {
+      background: #ffffff !important;
+      border-color: #3a5a40 !important;
+    }
+
+    .option-text {
+      color: #213328 !important;
+    }
+
+    .option-indicator {
+      background: #ffffff !important;
+      border: 1px solid rgba(58, 90, 64, 0.3) !important;
+      color: #344e41 !important;
+    }
+
+    &.selected {
+      background: rgba(88, 129, 87, 0.18) !important;
+      border-color: #3a5a40 !important;
+      box-shadow: 0 0 12px rgba(58, 90, 64, 0.2) !important;
+
+      .option-indicator {
+        background: #3a5a40 !important;
+        border-color: #3a5a40 !important;
+        color: #ffffff !important;
+      }
+
+      .option-text {
+        color: #1b2821 !important;
+        font-weight: 700 !important;
+      }
+    }
+  }
+
+  .footer-btn {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.25) !important;
+    color: #213328 !important;
+
+    &:hover:not(:disabled) {
+      background: #ffffff !important;
+      color: #1b2821 !important;
+    }
+
+    &.next-btn {
+      background: #3a5a40 !important;
+      color: #ffffff !important;
+      border-color: #3a5a40 !important;
+    }
+
+    &.mark-review-btn.active-marked {
+      background: rgba(217, 119, 6, 0.15) !important;
+      border-color: #d97706 !important;
+      color: #b45309 !important;
+    }
+  }
+
+  .matrix-node-btn {
+    &.status-unattempted {
+      background: #f4f3ec !important;
+      border-color: rgba(58, 90, 64, 0.2) !important;
+      color: #344e41 !important;
+    }
+
+    &.active-current {
+      box-shadow: 0 0 0 2px #3a5a40, 0 0 8px rgba(58, 90, 64, 0.35) !important;
+    }
+  }
+
+  .palette-header h3 {
+    color: #1b2821 !important;
+  }
+
+  .palette-legend {
+    color: #4a6750 !important;
+  }
+
+  /* Scorecard & Review */
+  .scorecard-hero,
+  .subject-analysis-card,
+  .review-filter-bar,
+  .review-card {
+    background: #ffffff !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+    box-shadow: 0 6px 20px rgba(52, 78, 65, 0.07) !important;
+  }
+
+  .score-title {
+    color: #1b2821 !important;
+  }
+
+  .score-subtext {
+    color: #344e41 !important;
+
+    strong {
+      color: #1b2821 !important;
+    }
+  }
+
+  .score-ring {
+    background: radial-gradient(circle, rgba(88, 129, 87, 0.25) 0%, #f4f3ec 100%) !important;
+    border: 3px solid #3a5a40 !important;
+
+    .score-number {
+      color: #1b2821 !important;
+    }
+
+    .score-max {
+      color: #588157 !important;
+    }
+  }
+
+  .res-item {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.15) !important;
+
+    &.skipped {
+      color: #4a6750 !important;
+    }
+  }
+
+  .subject-chip {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.15) !important;
+
+    .sub-name {
+      color: #1b2821 !important;
+    }
+  }
+
+  .filter-pill-btn {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+    color: #344e41 !important;
+
+    &.active {
+      background: #3a5a40 !important;
+      color: #ffffff !important;
+    }
+  }
+
+  .review-q-idx,
+  .review-q-text {
+    color: #1b2821 !important;
+  }
+
+  .review-opt-item {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.15) !important;
+
+    .opt-text {
+      color: #213328 !important;
+    }
+
+    .opt-label {
+      background: #ffffff !important;
+      color: #344e41 !important;
+    }
+  }
+
+  .explanation-box {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+
+    .ref-strip {
+      color: #92400e !important;
+    }
+
+    .explanation-text {
+      color: #213328 !important;
+
+      i {
+        color: #d97706 !important;
+      }
+    }
+  }
+
+  .lobby-back-btn {
+    background: #f4f3ec !important;
+    border: 1px solid rgba(58, 90, 64, 0.2) !important;
+    color: #213328 !important;
+
+    &:hover {
+      background: #ffffff !important;
+    }
+  }
+}
+
 /* Base Styles */
 *, *::before, *::after {
   box-sizing: border-box;
